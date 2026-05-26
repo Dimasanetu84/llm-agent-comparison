@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Qwen Chat via OpenRouter</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; background: #f5f5f5; }
+    h1 { text-align: center; color: #333; }
+    #chat { background: #fff; border: 1px solid #ddd; padding: 1rem; height: 350px; overflow-y: auto; margin-bottom: 1rem; border-radius: 8px; }
+    .msg { margin: 0.5rem 0; padding: 0.6rem 0.9rem; border-radius: 8px; max-width: 85%; line-height: 1.4; }
+    .user { background: #e3f2fd; margin-left: auto; text-align: right; }
+    .bot { background: #f0f0f0; }
+    .error { background: #ffebee; color: #c62828; }
+    .input-area { display: flex; gap: 0.5rem; }
+    input { flex: 1; padding: 0.7rem; border: 1px solid #ccc; border-radius: 6px; }
+    button { padding: 0.7rem 1.2rem; border: none; background: #1976d2; color: white; border-radius: 6px; cursor: pointer; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <h1>Чат с Qwen</h1>
+  <div id="chat"></div>
+  <div class="input-area">
+    <input id="input" placeholder="Введите сообщение..." autocomplete="off">
+    <button id="send">Отправить</button>
+  </div>
+
+  <script>
+    const API_ENDPOINT = '/chat'; // Запрос на наш локальный прокси
+    const MODEL = 'openrouter/free';
+    const chatBox = document.getElementById('chat');
+    const input = document.getElementById('input');
+    const sendBtn = document.getElementById('send');
+    let messages = [];
+
+    function appendMessage(role, text, isError = false) {
+      const div = document.createElement('div');
+      div.className = `msg ${role}${isError ? ' error' : ''}`;
+      div.textContent = text;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      appendMessage('user', text);
+      messages.push({ role: 'user', content: text });
+
+      input.disabled = sendBtn.disabled = true;
+      sendBtn.textContent = '⏳ Думаю...';
+
+      try {
+        const res = await fetch(API_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: MODEL, messages })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error?.message || `Ошибка: ${res.status}`);
+        }
+
+        const reply = data.choices?.[0]?.message?.content;
+        if (!reply) throw new Error('Пустой ответ от модели');
+
+        messages.push({ role: 'assistant', content: reply });
+        appendMessage('bot', reply);
+      } catch (err) {
+        console.error('Ошибка:', err);
+        appendMessage('bot', `❌ ${err.message}`, true);
+        messages.pop();
+      } finally {
+        input.disabled = sendBtn.disabled = false;
+        sendBtn.textContent = 'Отправить';
+        input.focus();
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    input.addEventListener('keypress', e => e.key === 'Enter' && sendMessage());
+    input.focus();
+  </script>
+</body>
+</html>

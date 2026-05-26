@@ -1,0 +1,21 @@
+# Зависимости Node.js
+node_modules/
+
+# Секретные файлы с ключами
+.env
+.env.local
+.env.*.local
+
+# Файлы IDE (если используете)
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Логи
+*.log
+npm-debug.log*
+
+# Файлы ОС
+.DS_Store
+Thumbs.db
